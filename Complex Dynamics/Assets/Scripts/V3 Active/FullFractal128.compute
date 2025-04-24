@@ -1,0 +1,256 @@
+﻿
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+
+
+// Incializace dat
+struct data
+{
+    double w;
+    double h;
+    double r;
+    double i;
+    int disW;
+    int disH;
+};
+
+StructuredBuffer<data> buffer;
+StructuredBuffer<float> coefBuffer;
+uint maxIter;
+
+int C(uint n, uint k)
+{
+	if((k==0)||(k==n)){
+		return 1;
+	} else if (k>n){
+		return 0;
+	} else {
+		
+			uint result = 1;
+			for (uint i = 1; i <= k; i++)
+			{
+				//Rekurzivní definice n nad k
+				result = result * (n - (i - 1)) / i;
+			}
+			return result;
+		}
+}
+
+double RealTerm(uint n, double rP[128], double iP[128])
+{
+	double result;
+	for(uint k=0; k<=n;k++){
+		if((k % 4)==0){
+			result += C(n,k)*rP[n-k]*iP[k];
+		} else if ((k % 4)==2) {
+			result -= C(n,k)*rP[n-k]*iP[k];
+		}
+	}
+	return result;
+}
+
+double ImTerm(uint n, double rP[128], double iP[128])
+{
+	double result;
+	for(uint k=0; k<=n;k++){
+		if((k % 4)==1){
+			result += C(n,k)*rP[n-k]*iP[k];
+		} else if ((k % 4)==3) {
+			result -= C(n,k)*rP[n-k]*iP[k];
+		}
+	}
+	return result;
+}
+
+double ImPolynomial(double iP[128], double rP[128])
+{
+	double result;
+	for(uint a=0; a<=128; a++){
+		if(coefBuffer[a] != 0){
+			result += coefBuffer[a]*ImTerm(a,rP,iP);
+		}
+	}
+	return result;
+}
+
+double RePolynomial(double iP[128], double rP[128])
+{
+	double result;
+	for(uint a=0; a<=128; a++){
+		if(coefBuffer[a] != 0){
+			result += coefBuffer[a]*RealTerm(a,rP,iP);
+		}
+	}
+	return result;
+}
+
+[numthreads(24,24,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    double real;
+    double im;
+    double xOffset = (double)id.x / buffer[0].disW * buffer[0].w;
+    double yOffset = (double)id.y / buffer[0].disH * buffer[0].h;
+
+    uint iterCount;
+    float4 CalcColor = { 0.0f , 0.0f, 0.0f, 1.0f };
+
+    real = buffer[0].r + xOffset;
+    im = buffer[0].i + yOffset;
+
+    for(uint i = 0; i < maxIter; i++)
+    {
+		int numOfCoef = coefBuffer.Length;
+
+		double rPows[128];
+		rPows[0] = 1;
+		for(uint j = 1; j <= numOfCoef; j++)
+		{
+			rPows[j] = real * rPows[j-1];
+		} 
+
+		double iPows[128];
+		iPows[0] = 1;
+		for(uint k = 1; k <= numOfCoef; k++)
+		{
+			iPows[k] = im * iPows[k-1];
+		}
+
+        if(rPows[2] + iPows[2] > 10)
+        {
+            break;
+        } else
+        {
+            im = ImPolynomial(iPows, rPows) + yOffset + buffer[0].i;
+            real = RePolynomial(iPows, rPows) + xOffset + buffer[0].r;
+
+            iterCount++;
+        }
+    }
+
+    if (iterCount != maxIter)
+	{
+		int colorNr = iterCount % 16;
+
+		switch (colorNr)
+		{
+		case 0:
+		{
+			CalcColor[0] = 66.0f / 255.0f;
+			CalcColor[1] = 30.0f / 255.0f;
+			CalcColor[2] = 15.0f / 255.0f;
+
+			break;
+		}
+		case 1:
+		{
+			CalcColor[0] = 25.0f / 255.0f;
+			CalcColor[1] = 7.0f / 255.0f;
+			CalcColor[2] = 26.0f / 255.0f;
+			break;
+		}
+		case 2:
+		{
+			CalcColor[0] = 9.0f / 255.0f;
+			CalcColor[1] = 1.0f / 255.0f;
+			CalcColor[2] = 47.0f / 255.0f;
+			break;
+		}
+
+		case 3:
+		{
+			CalcColor[0] = 4.0f / 255.0f;
+			CalcColor[1] = 4.0f / 255.0f;
+			CalcColor[2] = 73.0f / 255.0f;
+			break;
+		}
+		case 4:
+		{
+			CalcColor[0] = 0.0f / 255.0f;
+			CalcColor[1] = 7.0f / 255.0f;
+			CalcColor[2] = 100.0f / 255.0f;
+			break;
+		}
+		case 5:
+		{
+			CalcColor[0] = 12.0f / 255.0f;
+			CalcColor[1] = 44.0f / 255.0f;
+			CalcColor[2] = 138.0f / 255.0f;
+			break;
+		}
+		case 6:
+		{
+			CalcColor[0] = 24.0f / 255.0f;
+			CalcColor[1] = 82.0f / 255.0f;
+			CalcColor[2] = 177.0f / 255.0f;
+			break;
+		}
+		case 7:
+		{
+			CalcColor[0] = 57.0f / 255.0f;
+			CalcColor[1] = 125.0f / 255.0f;
+			CalcColor[2] = 209.0f / 255.0f;
+			break;
+		}
+		case 8:
+		{
+			CalcColor[0] = 134.0f / 255.0f;
+			CalcColor[1] = 181.0f / 255.0f;
+			CalcColor[2] = 229.0f / 255.0f;
+			break;
+		}
+		case 9:
+		{
+			CalcColor[0] = 211.0f / 255.0f;
+			CalcColor[1] = 236.0f / 255.0f;
+			CalcColor[2] = 248.0f / 255.0f;
+			break;
+		}
+		case 10:
+		{
+			CalcColor[0] = 241.0f / 255.0f;
+			CalcColor[1] = 233.0f / 255.0f;
+			CalcColor[2] = 191.0f / 255.0f;
+			break;
+		}
+		case 11:
+		{
+			CalcColor[0] = 248.0f / 255.0f;
+			CalcColor[1] = 201.0f / 255.0f;
+			CalcColor[2] = 95.0f / 255.0f;
+			break;
+		}
+		case 12:
+		{
+			CalcColor[0] = 255.0f / 255.0f;
+			CalcColor[1] = 170.0f / 255.0f;
+			CalcColor[2] = 0.0f / 255.0f;
+			break;
+		}
+		case 13:
+		{
+			CalcColor[0] = 204.0f / 255.0f;
+			CalcColor[1] = 128.0f / 255.0f;
+			CalcColor[2] = 0.0f / 255.0f;
+			break;
+		}
+		case 14:
+		{
+			CalcColor[0] = 153.0f / 255.0f;
+			CalcColor[1] = 87.0f / 255.0f;
+			CalcColor[2] = 0.0f / 255.0f;
+			break;
+		}
+		case 15:
+		{
+			CalcColor[0] = 106.0f / 255.0f;
+			CalcColor[1] = 52.0f / 255.0f;
+			CalcColor[2] = 3.0f / 255.0f;
+			break;
+		}
+		}
+	}
+
+    Result[id.xy] = CalcColor;
+}

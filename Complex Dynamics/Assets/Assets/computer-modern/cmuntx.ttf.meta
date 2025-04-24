@@ -1,0 +1,27 @@
+fileFormatVersion: 2
+guid: cebe665be0dd7c74883ddbbfc55ef9dd
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: CMU Typewriter Text
+  fontNames:
+  - CMU Typewriter Text
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 782217558766b6542b665c99c394b864, type: 3}
+  - {fileID: 12800000, guid: 0dbd594994afc2a47b88ab68816cdea5, type: 3}
+  - {fileID: 12800000, guid: cc97dd6c6a8ba794ba9ec384af847d2e, type: 3}
+  - {fileID: 12800000, guid: 026050deeee59de4c973fa55a35ce3b2, type: 3}
+  - {fileID: 12800000, guid: 736630ff713c5304aba46b5a351ca569, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
