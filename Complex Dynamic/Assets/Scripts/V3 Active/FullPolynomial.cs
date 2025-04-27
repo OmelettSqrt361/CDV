@@ -10,10 +10,12 @@ public class FullPolynomial : MonoBehaviour
     public double width;
     double height;
 
+    // Pravý horní roh
     public double sPosX;
     public double sPosY;
 
-    public int maxIter = 500;
+    // Iterace
+    public int maxIter;
     public int step;
 
     // Maximální počet koeficientů je 16
@@ -55,7 +57,7 @@ public class FullPolynomial : MonoBehaviour
     // Inetraguje s balíčkem TetxMeshPro, aby převzala proměnné typu double
     public void InputData()
     {
-
+        // Vložení dat z menu "O množině"
         width = double.Parse(spanText.text);
         height = (width / Screen.width) * Screen.height;
         zoom = double.Parse(zoomText.text);
@@ -64,11 +66,11 @@ public class FullPolynomial : MonoBehaviour
 
         //Tvorba množiny koeficientů
         string[] coefString = coefText.text.Split(';', ' ');
-
         for (int i = 0; i < 16; i++)
         {
             if (coefString.Length > i && coefString[i] != null && coefString[i] != "")
             {
+                // Zlomky
                 if (coefString[i].Contains("/"))
                 {
                     string[] twoVars = coefString[i].Split('/');
@@ -76,15 +78,18 @@ public class FullPolynomial : MonoBehaviour
 
                 }
                 else
-                {
+                {   
+                    // Celá čísla a desetinná čísla
                     coefficients[i] = float.Parse(coefString[i]);
                 }
             } else
             {
+                //Výčet končí dřív než v 15 prvku
                 coefficients[i] = 0.0f;
             }
         }
 
+        // Přepisování dat do bufferu
         data[0].w = width;
         data[0].h = height;
         data[0].r = sPosX;
@@ -93,17 +98,17 @@ public class FullPolynomial : MonoBehaviour
         Fractal();
     }
 
-    // Start is called before the first frame update
+    // Metoda spuštěná při načtení scény
     void Start()
     {
+        // Údržba
         ResetVars();
-
         height = (width / Screen.width) * Screen.height;
 
         // Vytvoříme balíček dat typu struct o délce 1
         data = new Datastruct[1];
 
-        // Naplníme balíiček dat našemi hodnotami
+        // Naplníme balíček dat našemi hodnotami, abychom jej mohli poslat do bufferu
         data[0] = new Datastruct
         {
             w = width,
@@ -120,6 +125,7 @@ public class FullPolynomial : MonoBehaviour
         buffer = new ComputeBuffer(data.Length, 40);
         coefBuffer = new ComputeBuffer(coefficients.Length, sizeof(float));
 
+        // Renderování textury
         calcResult = new RenderTexture(Screen.width, Screen.height, 0);
         calcResult.enableRandomWrite = true;
         calcResult.Create();
@@ -127,11 +133,14 @@ public class FullPolynomial : MonoBehaviour
         Fractal();
     }
 
+    // Ovládání: Centrování množiny
     void CenterScreen()
     {
+        // Přepočet souřadnic
         sPosX += (Input.mousePosition.x - (Screen.width / 2.0)) / Screen.width * width;
         sPosY += (Input.mousePosition.y - (Screen.height / 2.0)) / Screen.height * height;
 
+        //Uložení do bufferu
         data[0].r = sPosX;
         data[0].i = sPosY;
 
@@ -139,9 +148,13 @@ public class FullPolynomial : MonoBehaviour
         Fractal();
     }
 
+    //Ovládání: Přiblížení
     void ZoomIn()
     {
+        // Udržování počtu iterací minimálně nad 100
         maxIter = Mathf.Max(100, maxIter + step);
+
+        // Přepočet souřadnic
         double wFactor = width * zoom * Time.deltaTime;
         double hFactor = height * zoom * Time.deltaTime;
         height -= hFactor;
@@ -149,6 +162,7 @@ public class FullPolynomial : MonoBehaviour
         sPosX += wFactor / 2;
         sPosY += hFactor / 2;
 
+        //Uložení do bufferu
         data[0].w = width;
         data[0].h = height;
         data[0].r = sPosX;
@@ -158,9 +172,13 @@ public class FullPolynomial : MonoBehaviour
         Fractal();
     }
 
+    //Ovládání: Oddálení
     void ZoomOut()
     {
+        // Udržování počtu iterací minimálně nad 100
         maxIter = Mathf.Max(100, maxIter - step);
+
+        // Přepočet souřadnic
         double wFactor = width * zoom * Time.deltaTime;
         double hFactor = height * zoom * Time.deltaTime;
         height += hFactor;
@@ -168,6 +186,7 @@ public class FullPolynomial : MonoBehaviour
         sPosX -= wFactor / 2;
         sPosY -= hFactor / 2;
 
+        //Uložení do bufferu
         data[0].w = width;
         data[0].h = height;
         data[0].r = sPosX;
@@ -177,6 +196,8 @@ public class FullPolynomial : MonoBehaviour
         Fractal();
     }
 
+
+    // Spravování Inputů
     private void Update()
     {
         if (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W))
@@ -193,30 +214,39 @@ public class FullPolynomial : MonoBehaviour
         }
     }
 
+
+    // Hlavní funkce komunikující s shaderen
     void Fractal()
     {
+        // Nalezneme shader a jeho kernel
         int kernelHandle = shader.FindKernel("CSMain");
+
+        //Načteme data
         coefBuffer.SetData(coefficients);
         buffer.SetData(data);
 
+        //Přesun dat do shaderu
         shader.SetBuffer(kernelHandle, "coefBuffer", coefBuffer);
         shader.SetBuffer(kernelHandle, "buffer", buffer);
-
         shader.SetInt("maxIter", maxIter);
         shader.SetTexture(kernelHandle, "Result", calcResult);
 
+        //Spuštění shaderu
         shader.Dispatch(kernelHandle, Screen.width / 20, Screen.height / 20, 1);
 
+        // Data zpět z shaderu
         RenderTexture.active = calcResult;
         display.material.mainTexture = calcResult;
     }
 
+    // Vymazávání nepotřebných dat
     private void OnDestroy()
     {
         buffer.Dispose();
         coefBuffer.Dispose();
     }
 
+    // Přepis proměnných v menu "O Množině"
     void ResetVars()
     {
         spanText.text = width.ToString();

@@ -1,8 +1,5 @@
-﻿
-#pragma kernel CSMain
-
+﻿#pragma kernel CSMain
 RWTexture2D<float4> Result;
-
 
 // Incializace dat
 struct data
@@ -19,6 +16,8 @@ StructuredBuffer<data> buffer;
 StructuredBuffer<float> coefBuffer;
 uint maxIter;
 
+
+// Výpočet kombinačního čísla
 int C(uint n, uint k)
 {
 	if((k==0)||(k==n)){
@@ -37,6 +36,7 @@ int C(uint n, uint k)
 		}
 }
 
+// Jeden člen v reálné části polynomu
 double RealTerm(uint n, double rP[16], double iP[16])
 {
 	double result;
@@ -50,6 +50,7 @@ double RealTerm(uint n, double rP[16], double iP[16])
 	return result;
 }
 
+// Jeden člen v imaginární části polynomu
 double ImTerm(uint n, double rP[16], double iP[16])
 {
 	double result;
@@ -63,6 +64,7 @@ double ImTerm(uint n, double rP[16], double iP[16])
 	return result;
 }
 
+// Imaginární část polynomu
 double ImPolynomial(double iP[16], double rP[16])
 {
 	double result;
@@ -74,6 +76,7 @@ double ImPolynomial(double iP[16], double rP[16])
 	return result;
 }
 
+// Reálná část polynomu
 double RePolynomial(double iP[16], double rP[16])
 {
 	double result;
@@ -85,9 +88,11 @@ double RePolynomial(double iP[16], double rP[16])
 	return result;
 }
 
+// Hlavní metoda
 [numthreads(24,24,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+	// Definice proměnných
     double real;
     double im;
     double xOffset = (double)id.x / buffer[0].disW * buffer[0].w;
@@ -96,13 +101,17 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     uint iterCount;
     float4 CalcColor = { 0.0f , 0.0f, 0.0f, 1.0f };
 
+	// Přepočet souřadnic
     real = buffer[0].r + xOffset;
     im = buffer[0].i + yOffset;
 
+	// Iterační funkce
     for(uint i = 0; i < maxIter; i++)
     {
+		// Počet koeficientů
 		int numOfCoef = coefBuffer.Length;
 
+		// Reálné mocniny z_n-1
 		double rPows[16];
 		rPows[0] = 1;
 		for(uint j = 1; j <= numOfCoef; j++)
@@ -110,6 +119,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			rPows[j] = real * rPows[j-1];
 		} 
 
+		// Reálná část imaginárních mocnin z_n-1
 		double iPows[16];
 		iPows[0] = 1;
 		for(uint k = 1; k <= numOfCoef; k++)
@@ -117,11 +127,13 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			iPows[k] = im * iPows[k-1];
 		}
 
+		// Kontrola velikosti z
         if(rPows[2] + iPows[2] > 1000)
         {
             break;
         } else
         {
+			// Výpočet z
             im = ImPolynomial(iPows, rPows) + yOffset + buffer[0].i;
             real = RePolynomial(iPows, rPows) + xOffset + buffer[0].r;
 
@@ -129,6 +141,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         }
     }
 
+
+	// Modulární obarvení vektoru (černá pokud je tato funkce přeskočena, protože pixel je definován jako černý)
     if (iterCount != maxIter)
 	{
 		int colorNr = iterCount % 16;
@@ -252,5 +266,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		}
 	}
 
+
+	// Odeslání dat zpět
     Result[id.xy] = CalcColor;
 }
